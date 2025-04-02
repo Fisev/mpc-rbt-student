@@ -1,4 +1,5 @@
 #include "mpc_rbt_simulator/RobotConfig.hpp"
+#include "../include/Localization.hpp"
 
 LocalizationNode::LocalizationNode() : 
     rclcpp::Node("localization_node"), 
@@ -10,31 +11,35 @@ LocalizationNode::LocalizationNode() :
     // add code here
 
     // Subscriber for joint_states
-    // add code here
+    joint_subscriber_ = this->create_subscription<sensor_msgs::msg::JointState>(
+        "joint_states", 1, std::bind(&LocalizationNode::jointCallback, this, std::placeholders::_1));
+    
 
     // Publisher for odometry
+    odometry_publisher_ = this->create_publisher<nav_msgs::msg::Odometry>("RobotOdometetry", 10);
     // add code here
 
     // tf_briadcaster 
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
-
+cd 
     RCLCPP_INFO(get_logger(), "Localization node started.");
 }
 
 void LocalizationNode::jointCallback(const sensor_msgs::msg::JointState & msg) {
     // add code here
 
-
+    RCLCPP_INFO(this->get_logger(), "First velocity value: %f", msg.velocity[0]);
     // ********
     // * Help *
     // ********
-    /*
+    
     auto current_time = this->get_clock()->now();
-
-    updateOdometry(msg.velocity[0], msg.velocity[1], dt);
+    auto dt = (current_time - last_time_);
+    updateOdometry(msg.velocity[0], msg.velocity[1], dt.nanoseconds()/1e9);
     publishOdometry();
     publishTransform();
-    */
+
+    last_time_ = this->get_clock()->now();
 }
 
 void LocalizationNode::updateOdometry(double left_wheel_vel, double right_wheel_vel, double dt) {
@@ -43,9 +48,12 @@ void LocalizationNode::updateOdometry(double left_wheel_vel, double right_wheel_
     // ********
     // * Help *
     // ********
-    /*
-    double linear =  ;
-    double angular = ;  //robot_config::HALF_DISTANCE_BETWEEN_WHEELS
+    
+    double linear =  (right_wheel_vel + left_wheel_vel)/2;
+    double angular = (right_wheel_vel - left_wheel_vel)/(2*robot_config::HALF_DISTANCE_BETWEEN_WHEELS);
+
+    odometry_.child_frame_id = "base_link";
+    odometry_.header.frame_id = "map";
 
     tf2::Quaternion tf_quat;
     tf2::fromMsg(odometry_.pose.pose.orientation, tf_quat);
@@ -54,20 +62,34 @@ void LocalizationNode::updateOdometry(double left_wheel_vel, double right_wheel_
 
     theta = std::atan2(std::sin(theta), std::cos(theta));
 
+    odometry_.twist.twist.linear.x += linear;
+    odometry_.twist.twist.angular.z += angular;
+
+    odometry_.pose.pose.position.x +=  linear * dt *std::cos(theta);
+    odometry_.pose.pose.position.y +=  linear * dt *std::sin(theta);
+
+
     tf2::Quaternion q;
     q.setRPY(0, 0, 0);
-    */
+    
 }
 
 void LocalizationNode::publishOdometry() {
-    // add code here
+    odometry_.header.stamp = this->get_clock()->now();
+    odometry_publisher_->publish(odometry_);
 }
 
 void LocalizationNode::publishTransform() {
+    geometry_msgs::msg::TransformStamped t;
+
+    t.transform.translation.x = odometry_.pose.pose.position.x;
+    t.transform.translation.y = odometry_.pose.pose.position.y;
+    t.transform.translation.z = odometry_.pose.pose.position.z;
+    t.transform.rotation = odometry_.pose.pose.orientation;
     // add code here
     
     // ********
     // * Help *
     // ********
-    //tf_broadcaster_->sendTransform(t);
+    tf_broadcaster_->sendTransform(t);
 }

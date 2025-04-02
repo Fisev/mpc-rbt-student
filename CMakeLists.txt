@@ -10,6 +10,8 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(mpc_rbt_simulator REQUIRED)
+find_package(nav_msgs REQUIRED)
 #find_package(chrono REQUIRED)
 #find_package(functional REQUIRED)
 #find_package(memory REQUIRED)
@@ -24,18 +26,18 @@ set(dependecies
 	rclcpp
 	geometry_msgs
 	std_msgs
+  mpc_rbt_simulator
+  nav_msgs
 )
 
 add_library(${PROJECT_NAME} SHARED
 	src/KeyboardControl.cpp
-	#src/Localization.cpp
+	src/Localization.cpp
+
 	#src/Planning.cpp
 	#src/Motion.cpp
 )
-
 ament_target_dependencies(${PROJECT_NAME} ${dependecies})
-
-
 install(TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
@@ -43,11 +45,23 @@ install(TARGETS ${PROJECT_NAME}
 )
  
 add_executable(keyboard_control src/keyboard_control_node.cpp)
-
 target_link_libraries(keyboard_control ${PROJECT_NAME})
 install(TARGETS keyboard_control DESTINATION lib/${PROJECT_NAME})
  
+
+add_executable(Localization src/localization_node.cpp)
+target_link_libraries(Localization ${PROJECT_NAME})
+install(TARGETS Localization DESTINATION lib/${PROJECT_NAME})
+ 
+
 target_compile_features(mpc_rbt_student PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+
+install(DIRECTORY
+  launch
+  rviz
+  DESTINATION share/${PROJECT_NAME}/
+)
+
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
