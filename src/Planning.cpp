@@ -14,6 +14,9 @@ PlanningNode::PlanningNode() :
 
         RCLCPP_INFO(get_logger(), "Planning node started.");
 
+        // Connect to map server
+        // add code here
+
         // Request map
         // add code here
         

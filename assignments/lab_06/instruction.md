@@ -44,7 +44,7 @@ Trasy vygenerované algoritmem A* jsou z principu zarovnané s mřížkou mapy, 
 Existuje více metod vedoucích k podobnému cíli, jako jednu variantu můžu doporučit iterativní gradientní algoritmus, který si můžet nastudovat na tomto [odkazu](https://medium.com/@jaems33/understanding-robot-motion-path-smoothing-5970c8363bc4).
 
 
-## Hodnocená cvičení
+## Hodnocení cvičení
 > [!WARNING]  
 > Cvičení nebude hodnoceno jen na základě funkčnosti. Bude hodnocen i zdrojový kód a pochopení problematiky. Doporučuji se připravit na otázky z domácí přípravy. 
 
