@@ -21,7 +21,7 @@ LocalizationNode::LocalizationNode() :
 
     // tf_briadcaster 
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
-cd 
+
     RCLCPP_INFO(get_logger(), "Localization node started.");
 }
 
@@ -49,8 +49,11 @@ void LocalizationNode::updateOdometry(double left_wheel_vel, double right_wheel_
     // * Help *
     // ********
     
-    double linear =  (right_wheel_vel + left_wheel_vel)/2;
-    double angular = (right_wheel_vel - left_wheel_vel)/(2*robot_config::HALF_DISTANCE_BETWEEN_WHEELS);
+    double left_wheel_vel_lin = left_wheel_vel * robot_config::WHEEL_RADIUS;
+    double right_wheel_vel_lin = right_wheel_vel * robot_config::WHEEL_RADIUS;
+
+    double linear =  (right_wheel_vel_lin + left_wheel_vel_lin)/2.0;
+    double angular = -(right_wheel_vel_lin - left_wheel_vel_lin)/(2.0*robot_config::HALF_DISTANCE_BETWEEN_WHEELS);
 
     odometry_.child_frame_id = "base_link";
     odometry_.header.frame_id = "map";
@@ -60,17 +63,18 @@ void LocalizationNode::updateOdometry(double left_wheel_vel, double right_wheel_
     double roll, pitch, theta;
     tf2::Matrix3x3(tf_quat).getRPY(roll, pitch, theta);
 
-    theta = std::atan2(std::sin(theta), std::cos(theta));
-
-    odometry_.twist.twist.linear.x += linear;
-    odometry_.twist.twist.angular.z += angular;
+    //theta = std::atan2(std::sin(theta), std::cos(theta));
+    theta += angular * dt;
+    //odometry_.twist.twist.linear.x += linear;
+    //odometry_.twist.twist.angular.z += angular;
 
     odometry_.pose.pose.position.x +=  linear * dt *std::cos(theta);
     odometry_.pose.pose.position.y +=  linear * dt *std::sin(theta);
 
 
     tf2::Quaternion q;
-    q.setRPY(0, 0, 0);
+    q.setRPY(0, 0, theta);
+    odometry_.pose.pose.orientation = tf2::toMsg(q);
     
 }
 
@@ -81,6 +85,10 @@ void LocalizationNode::publishOdometry() {
 
 void LocalizationNode::publishTransform() {
     geometry_msgs::msg::TransformStamped t;
+
+    t.header.frame_id = "map";
+    t.child_frame_id = "base_link";
+    t.header.stamp = this->get_clock()->now();
 
     t.transform.translation.x = odometry_.pose.pose.position.x;
     t.transform.translation.y = odometry_.pose.pose.position.y;
