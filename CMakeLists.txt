@@ -33,9 +33,9 @@ set(dependecies
 add_library(${PROJECT_NAME} SHARED
 	src/KeyboardControl.cpp
 	src/Localization.cpp
-
-	#src/Planning.cpp
-	#src/Motion.cpp
+  src/Planning.cpp
+	
+  #src/Motion.cpp
 )
 ament_target_dependencies(${PROJECT_NAME} ${dependecies})
 install(TARGETS ${PROJECT_NAME}
@@ -54,6 +54,10 @@ target_link_libraries(Localization ${PROJECT_NAME})
 install(TARGETS Localization DESTINATION lib/${PROJECT_NAME})
  
 
+add_executable(planning src/planning_node.cpp)
+target_link_libraries(planning ${PROJECT_NAME})
+install(TARGETS planning DESTINATION lib/${PROJECT_NAME})
+ 
 target_compile_features(mpc_rbt_student PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
 install(DIRECTORY
