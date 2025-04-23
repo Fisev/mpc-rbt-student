@@ -1,0 +1,97 @@
+oid PlanningNode::aStar(const geometry_msgs::msg::PoseStamped &start, const geometry_msgs::msg::PoseStamped &goal) {
+    
+    Cell cStart((int)(start.pose.position.x - map_.info.origin.position.x)/map_.info.resolution, (int)(start.pose.position.y - map_.info.origin.position.y)/map_.info.resolution);      // meaby shoul subtract map pos
+    Cell cGoal((int)(goal.pose.position.x - map_.info.origin.position.x)/map_.info.resolution, (int)(goal.pose.position.y - map_.info.origin.position.y)/map_.info.resolution);
+
+    std::vector<std::shared_ptr<Cell>> openList;
+    std::vector<bool> closedList(map_.info.height * map_.info.width, false);
+
+    openList.push_back(std::make_shared<Cell>(cStart));
+
+    while(!openList.empty() && rclcpp::ok()) { 
+        auto current = std::min_element(openList.begin(), openList.end(), [](const std::shared_ptr<Cell>& a, const std::shared_ptr<Cell>& b){return a->f < b->f; });
+        
+        RCLCPP_INFO(get_logger(), "Position: %d, %d", (*current)->x, (*current)->y);
+
+        if ((*current)->x == cGoal.x && (*current)->y == cGoal.y) {
+            path_.poses.clear();
+             while (*current) {
+                geometry_msgs::msg::PoseStamped ps;
+
+                ps.pose.position.x = (*current)->x * map_.info.resolution + map_.info.origin.position.x+map_.info.resolution/2;
+                ps.pose.position.y = (*current)->y * map_.info.resolution + map_.info.origin.position.y+map_.info.resolution/2;
+                ps.pose.position.z = 0.0;
+                ps.pose.orientation.w = 1.0;
+                path_.poses.push_back(ps);
+             }
+            std::reverse(path_.poses.begin(), path_.poses.end());
+        	path_.header.frame_id = map_.header.frame_id;
+        	return;
+        }
+
+        openList.erase(current);
+        closedList[(*current)->y * map_.info.width + (*current)->x] = true;
+                 
+        int dx[] = {0, -1, 1, 0};
+        int dy[] = {-1, 0, 0, 1};
+
+        for (int i = 0; i < 4; ++i){
+            int nx = (*current)->x + dx[i];
+            int ny = (*current)->y + dy[i]; 
+        
+            if(nx < 0 || ny < 0 || nx >= map_.info.width || ny >= map_.info.height || map_.data[ny * map_.info.resolution + nx] > 0.8){
+                continue;
+            }
+            
+            if(closedList[ny * map_.info.width+ nx]) continue;
+
+            std::shared_ptr<Cell> neighbor = std::make_shared<Cell>(Cell(nx, ny));
+            neighbor->g = (*current)->g + 1;
+            neighbor->h = std::sqrt((nx - goal.pose.position.x)*(nx - goal.pose.position.x) + (ny - goal.pose.position.y) * (ny - goal.pose.position.y));
+            neighbor->parent = *current;
+
+            if(std::any_of(closedList.begin(), closedList.end(), [&](std::shared_ptr<Cell> n) {return n == neighbor; })){
+                continue;
+            }
+
+            
+            float g_new = (*current)->g + 1;
+        	float h_new = std::sqrt((nx - goal.pose.position.x)*(nx - goal.pose.position.x) + (ny - goal.pose.position.y) * (ny - goal.pose.position.y));
+        	float f_new = g_new + h_new;
+
+            auto it = std::find_if(openList.begin(), openList.end(), [nx, ny](const std::shared_ptr<Cell> &cell) {
+        		return cell->x == nx && cell->y == ny;
+        	});
+        	
+        	if (it == openList.end() || f_new < (*it)->f) {
+        		auto neighbor = std::make_shared<Cell>(nx, ny);
+        		neighbor->g = g_new;
+        		neighbor->h = h_new;
+        		neighbor->f = f_new;
+        		neighbor->parent = (*current);
+        		
+        		if(it == openList.end()) {
+        			openList.push_back(neighbor);
+        		} else {
+        			*it = neighbor;
+        		}
+        	}	
+
+
+
+            /*
+            auto it = std::find_if(openList.begin(), openList.end(), [&](std::shared_ptr<Cell> n ){return n == neighbor; });
+            
+            openList.erase(current);
+            /*if(it != openList.end()){  !!!!!!!!!!!!!!!!!!!!!!!!!!
+                if(*(it)->g  )
+            }
+            
+            openList.push_back(neighbor);*/
+        }
+       
+     }
+
+    //RCLCPP_ERROR(get_logger(), "Unable to plan path.");
+    
+}
